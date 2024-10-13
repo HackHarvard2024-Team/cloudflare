@@ -2,7 +2,7 @@ import { decode } from './polylineDecoder';
 import { fetch4Gons } from './polygonFetcher';
 import { polylineIntersectsPolygon } from './geometryUtils';
   
-  addEventListener("fetch", event => {
+addEventListener("fetch", event => {
     event.respondWith(handleRequest(event.request));
 });
 
@@ -42,8 +42,10 @@ async function handleRequest(request) {
         });
     }
 
-    if (!data.polyline) {
-        return new Response("Missing 'polyline' field in request body", { 
+    // Check for polyline and dangerLevel, but only use polyline for now
+    const { polyline, dangerLevel } = data;
+    if (!polyline || dangerLevel === undefined) {
+        return new Response("Missing 'polyline' or 'dangerLevel' field in request body", { 
             status: 400,
             headers: {
                 "Access-Control-Allow-Origin": "*"
@@ -51,10 +53,11 @@ async function handleRequest(request) {
         });
     }
 
-    const decodedPolyline = decode(data.polyline).map(([lat, lon]) => ({ lat, lon }));
+    const decodedPolyline = decode(polyline).map(([lat, lon]) => ({ lat, lon }));
     const polygons = await fetch4Gons();
     const overlappingPolygons = polygons.filter(polygon => polylineIntersectsPolygon(decodedPolyline, polygon));
 
+    // Return the polygons as JSON
     return new Response(JSON.stringify(overlappingPolygons), {
         headers: { 
             "Content-Type": "application/json",
